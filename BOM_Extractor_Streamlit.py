@@ -17,9 +17,15 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 from PIL import Image
-import pytesseract
 import zipfile
 import io
+
+# Try to import pytesseract (may not be available on cloud)
+try:
+    import pytesseract
+    PYTESSERACT_AVAILABLE = True
+except ImportError:
+    PYTESSERACT_AVAILABLE = False
 # Disable pytesseract warning for cloud deployment
 import os
 os.environ['TESSDATA_PREFIX'] = '/app/.streamlit/'
@@ -112,13 +118,12 @@ class BOMExtractor:
         try:
             img = Image.open(io.BytesIO(image_data))
             
-            # Try to use pytesseract, but handle if Tesseract is not installed
-            try:
-                text = pytesseract.image_to_string(img)
-            except Exception as ocr_error:
-                # Tesseract not available (e.g., on Streamlit Cloud)
-                st.warning("⚠️ OCR not available in this environment. Please use the self-hosted version for full functionality.")
-                return "TESSERACT_UNAVAILABLE", "TESSERACT_UNAVAILABLE"
+            # Check if pytesseract is available
+            if not PYTESSERACT_AVAILABLE:
+                st.error("❌ OCR engine not available. Please use the self-hosted version for full functionality.")
+                return "NO_OCR", "NO_OCR"
+            
+            text = pytesseract.image_to_string(img)
 
             qn_no = "UNKNOWN"
             bom_no = "UNKNOWN"
@@ -139,8 +144,7 @@ class BOMExtractor:
 
         except Exception as e:
             return "ERROR", "ERROR"
-
-
+            
 # Title
 st.title("📋 BOM Image Extractor")
 st.markdown("Extract QN NO and BOM values from BOM images - No installation needed!")
