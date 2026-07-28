@@ -20,7 +20,9 @@ from PIL import Image
 import pytesseract
 import zipfile
 import io
-
+# Disable pytesseract warning for cloud deployment
+import os
+os.environ['TESSDATA_PREFIX'] = '/app/.streamlit/'
 # Set page config
 st.set_page_config(
     page_title="BOM Image Extractor",
@@ -109,7 +111,14 @@ class BOMExtractor:
         """Extract QN NO and BOM from image"""
         try:
             img = Image.open(io.BytesIO(image_data))
-            text = pytesseract.image_to_string(img)
+            
+            # Try to use pytesseract, but handle if Tesseract is not installed
+            try:
+                text = pytesseract.image_to_string(img)
+            except Exception as ocr_error:
+                # Tesseract not available (e.g., on Streamlit Cloud)
+                st.warning("⚠️ OCR not available in this environment. Please use the self-hosted version for full functionality.")
+                return "TESSERACT_UNAVAILABLE", "TESSERACT_UNAVAILABLE"
 
             qn_no = "UNKNOWN"
             bom_no = "UNKNOWN"
